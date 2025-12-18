@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Trivector - Geometric Algebra</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 300px;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #856404;
+            margin-top: 15px;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            #info {
+                font-size: 0.85rem;
+                padding: 15px;
+                max-width: 250px;
+            }
+            
+            h1 {
+                font-size: 1.2rem;
+            }
+            
+            .controls {
+                flex-wrap: wrap;
+                width: 90%;
+            }
+            
+            button {
+                flex: 1;
+                min-width: 100px;
+                font-size: 0.85rem;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="info">
+        <h1>🔷 3D Trivector</h1>
+        <p class="subtitle">Drag vectors to explore u ∧ v ∧ w</p>
+        
+        <div class="info-item">
+            <div class="label">Volume</div>
+            <div class="value" id="volume">0.00</div>
+        </div>
+        
+        <div class="info-item">
+            <div class="label">Orientation</div>
+            <div class="value" id="orientation">—</div>
+        </div>
+        
+        <div class="instructions">
+            <strong>Controls:</strong><br>
+            • Drag sphere endpoints to move vectors<br>
+            • Right-click drag to rotate view<br>
+            • Scroll to zoom<br>
+            • Switch between wedge products below
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="mode-btn active" data-mode="uvw">u∧v∧w</button>
+        <button class="mode-btn" data-mode="vuw">v∧u∧w</button>
+        <button class="mode-btn" data-mode="wvu">w∧v∧u</button>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8f8f8);
+        
+        const camera = new THREE.PerspectiveCamera(
+            50,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(8, 6, 8);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        directionalLight.position.set(5, 10, 7);
+        scene.add(directionalLight);
+        
+        // Grid
+        const gridHelper = new THREE.GridHelper(10, 10, 0xcccccc, 0xe0e0e0);
+        scene.add(gridHelper);
+        
+        // Axes
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+        
+        // State
+        let vectors = {
+            u: new THREE.Vector3(2.5, 0.5, 0.3),
+            v: new THREE.Vector3(0.5, 2.5, 0.8),
+            w: new THREE.Vector3(0.3, 0.8, 2.0)
+        };
+        
+        let mode = 'uvw';
+        let dragging = null;
+        let rotationAngle = 0;
+        
+        // Create vector arrows
+        const arrowU = new THREE.ArrowHelper(
+            vectors.u.clone().normalize(),
+            new THREE.Vector3(0, 0, 0),
+            vectors.u.length(),
+            0xFF6B35,
+            0.3,
+            0.2
+        );
+        scene.add(arrowU);
+        
+        const arrowV = new THREE.ArrowHelper(
+            vectors.v.clone().normalize(),
+            new THREE.Vector3(0, 0, 0),
+            vectors.v.length(),
+            0x004E89,
+            0.3,
+            0.2
+        );
+        scene.add(arrowV);
+        
+        const arrowW = new THREE.ArrowHelper(
+            vectors.w.clone().normalize(),
+            new THREE.Vector3(0, 0, 0),
+            vectors.w.length(),
+            0x1B998B,
+            0.3,
+            0.2
+        );
+        scene.add(arrowW);
+        
+        // Endpoint spheres
+        const sphereGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+        
+        const sphereU = new THREE.Mesh(
+            sphereGeometry,
+            new THREE.MeshPhongMaterial({ color: 0xFF6B35 })
+        );
+        sphereU.userData = { vector: 'u' };
+        scene.add(sphereU);
+        
+        const sphereV = new THREE.Mesh(
+            sphereGeometry,
+            new THREE.MeshPhongMaterial({ color: 0x004E89 })
+        );
+        sphereV.userData = { vector: 'v' };
+        scene.add(sphereV);
+        
+        const sphereW = new THREE.Mesh(
+            sphereGeometry,
+            new THREE.MeshPhongMaterial({ color: 0x1B998B })
+        );
+        sphereW.userData = { vector: 'w' };
+        scene.add(sphereW);
+        
+        // Parallelepiped
+        let parallelepiped = null;
+        let spinningArrows = [];
+        
+        function createParallelepiped() {
+            // Remove old
+            if (parallelepiped) {
+                scene.remove(parallelepiped);
+                spinningArrows.forEach(arrow => scene.remove(arrow));
+                spinningArrows = [];
+            }
+            
+            // Get vectors based on mode
+            let [vec1, vec2, vec3] = getOrderedVectors();
+            
+            // Calculate triple product
+            const triple = vec1.dot(new THREE.Vector3().crossVectors(vec2, vec3));
+            const isPositive = triple > 0;
+            
+            // Create geometry
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                // Bottom face (0,1,2,3)
+                0, 0, 0,
+                vec1.x, vec1.y, vec1.z,
+                vec1.x + vec2.x, vec1.y + vec2.y, vec1.z + vec2.z,
+                vec2.x, vec2.y, vec2.z,
+                // Top face (4,5,6,7)
+                vec3.x, vec3.y, vec3.z,
+                vec1.x + vec3.x, vec1.y + vec3.y, vec1.z + vec3.z,
+                vec1.x + vec2.x + vec3.x, vec1.y + vec2.y + vec3.y, vec1.z + vec2.z + vec3.z,
+                vec2.x + vec3.x, vec2.y + vec3.y, vec2.z + vec3.z
+            ]);
+            
+            const indices = new Uint16Array([
+                0,1,2, 0,2,3,  // Bottom
+                4,5,6, 4,6,7,  // Top
+                0,1,5, 0,5,4,  // Front
+                2,3,7, 2,7,6,  // Back
+                0,3,7, 0,7,4,  // Left
+                1,2,6, 1,6,5   // Right
+            ]);
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+            geometry.computeVertexNormals();
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: isPositive ? 0x7B9FD4 : 0xD47B7B,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            
+            parallelepiped = new THREE.Mesh(geometry, material);
+            scene.add(parallelepiped);
+            
+            // Add edges
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(
+                edges,
+                new THREE.LineBasicMaterial({ 
+                    color: isPositive ? 0x0066CC : 0xCC0000,
+                    linewidth: 2
+                })
+            );
+            parallelepiped.add(line);
+            
+            // Create spinning arrows on faces
+            createFaceArrows(vertices, isPositive);
+            
+            // Update UI
+            document.getElementById('volume').textContent = Math.abs(triple).toFixed(2);
+            document.getElementById('orientation').textContent = 
+                isPositive ? 'Right-handed (+)' : 'Left-handed (−)';
+        }
+        
+        function createFaceArrows(vertices, isPositive) {
+            const color = isPositive ? 0x0066CC : 0xCC0000;
+            
+            // Create curved arrows on visible faces
+            const faces = [
+                [0, 1, 2, 3],  // Bottom
+                [4, 5, 6, 7],  // Top
+                [0, 1, 5, 4]   // Front
+            ];
+            
+            faces.forEach(faceIndices => {
+                const center = new THREE.Vector3();
+                faceIndices.forEach(idx => {
+                    center.x += vertices[idx*3];
+                    center.y += vertices[idx*3+1];
+                    center.z += vertices[idx*3+2];
+                });
+                center.divideScalar(4);
+                
+                // Create spinning torus as arrow
+                const radius = 0.3;
+                const tube = 0.05;
+                const torusGeometry = new THREE.TorusGeometry(radius, tube, 8, 32, Math.PI * 1.5);
+                const torusMaterial = new THREE.MeshPhongMaterial({ color });
+                const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+                
+                torus.position.copy(center);
+                torus.userData = { isArrow: true, isPositive };
+                
+                scene.add(torus);
+                spinningArrows.push(torus);
+            });
+        }
+        
+        function getOrderedVectors() {
+            if (mode === 'uvw') {
+                return [vectors.u, vectors.v, vectors.w];
+            } else if (mode === 'vuw') {
+                return [vectors.v, vectors.u, vectors.w];
+            } else {
+                return [vectors.w, vectors.v, vectors.u];
+            }
+        }
+        
+        function updateVectors() {
+            arrowU.setDirection(vectors.u.clone().normalize());
+            arrowU.setLength(vectors.u.length(), 0.3, 0.2);
+            sphereU.position.copy(vectors.u);
+            
+            arrowV.setDirection(vectors.v.clone().normalize());
+            arrowV.setLength(vectors.v.length(), 0.3, 0.2);
+            sphereV.position.copy(vectors.v);
+            
+            arrowW.setDirection(vectors.w.clone().normalize());
+            arrowW.setLength(vectors.w.length(), 0.3, 0.2);
+            sphereW.position.copy(vectors.w);
+            
+            createParallelepiped();
+        }
+        
+        // Mouse interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const offset = new THREE.Vector3();
+        
+        function onMouseDown(event) {
+            event.preventDefault();
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([sphereU, sphereV, sphereW]);
+            
+            if (intersects.length > 0) {
+                dragging = intersects[0].object.userData.vector;
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectPoint);
+                offset.copy(intersectPoint).sub(vectors[dragging]);
+                renderer.domElement.style.cursor = 'grabbing';
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!dragging) return;
+            
+            event.preventDefault();
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersectPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersectPoint);
+            
+            vectors[dragging].copy(intersectPoint).sub(offset);
+            
+            // Limit magnitude
+            const mag = vectors[dragging].length();
+            if (mag > 5) {
+                vectors[dragging].normalize().multiplyScalar(5);
+            }
+            
+            updateVectors();
+        }
+        
+        function onMouseUp() {
+            dragging = null;
+            renderer.domElement.style.cursor = 'default';
+        }
+        
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        
+        // Touch events
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                onMouseDown({ 
+                    clientX: touch.clientX, 
+                    clientY: touch.clientY,
+                    preventDefault: () => e.preventDefault()
+                });
+            }
+        });
+        
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && dragging) {
+                const touch = e.touches[0];
+                onMouseMove({ 
+                    clientX: touch.clientX, 
+                    clientY: touch.clientY,
+                    preventDefault: () => e.preventDefault()
+                });
+            }
+        });
+        
+        renderer.domElement.addEventListener('touchend', onMouseUp);
+        
+        // Camera controls
+        let isRotating = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            if (e.button === 2) { // Right click
+                isRotating = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+        
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isRotating) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                
+                camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), deltaX * 0.01);
+                
+                const right = new THREE.Vector3();
+                camera.getWorldDirection(right);
+                right.cross(new THREE.Vector3(0, 1, 0)).normalize();
+                camera.position.applyAxisAngle(right, deltaY * 0.01);
+                
+                camera.lookAt(0, 0, 0);
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+        });
+        
+        renderer.domElement.addEventListener('mouseup', () => {
+            isRotating = false;
+        });
+        
+        renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Zoom
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY * 0.01;
+            camera.position.multiplyScalar(1 + delta);
+        });
+        
+        // Mode buttons
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                mode = btn.dataset.mode;
+                updateVectors();
+            });
+        });
+        
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate spinning arrows
+            rotationAngle += 0.02;
+            spinningArrows.forEach(arrow => {
+                const direction = arrow.userData.isPositive ? 1 : -1;
+                arrow.rotation.y = rotationAngle * direction;
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize
+        updateVectors();
+        animate();
+    </script>
+</body>
+</html>
