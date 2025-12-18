@@ -20,7 +20,7 @@
             flex-direction: column;
             align-items: center;
             padding: 10px;
-            touch-action: none;
+            overflow-y: auto;
         }
         
         .container {
@@ -29,7 +29,8 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             max-width: 100%;
             width: min(95vw, 900px);
-            overflow: hidden;
+            overflow: visible;
+            margin-bottom: 20px;
         }
         
         .header {
@@ -230,7 +231,8 @@
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
             canvas.width = rect.width;
-            canvas.height = Math.min(rect.width * 0.75, 600);
+            // Better aspect ratio for mobile - taller canvas
+            canvas.height = Math.min(rect.width * 1.0, 600);
         }
         
         resizeCanvas();
@@ -238,17 +240,19 @@
         
         // State
         let state = {
-            // Vector endpoints (relative to canvas center)
-            u: { x: 3, y: 1 },
-            v: { x: 1, y: 3 },
+            // Vector endpoints (relative to canvas center) - reduced for mobile
+            u: { x: 2, y: 0.7 },
+            v: { x: 0.7, y: 2 },
             mode: 'u^v', // 'u^v', 'v^u', '-u^v', '-v^u'
             dragging: null, // 'u' or 'v'
             arrowRotation: 0, // Spinning arrow angle
             animationFrame: null
         };
         
-        // Scale factor for vectors
-        const SCALE = 50;
+        // Scale factor for vectors - responsive to canvas size
+        function getScale() {
+            return Math.min(canvas.width, canvas.height) * 0.12;
+        }
         const VECTOR_RADIUS = 15; // Hit detection radius
         
         // Get canvas center
@@ -262,18 +266,20 @@
         // Convert canvas coordinates to vector space
         function canvasToVector(canvasX, canvasY) {
             const center = getCenter();
+            const scale = getScale();
             return {
-                x: (canvasX - center.x) / SCALE,
-                y: -(canvasY - center.y) / SCALE // Flip Y
+                x: (canvasX - center.x) / scale,
+                y: -(canvasY - center.y) / scale // Flip Y
             };
         }
         
         // Convert vector to canvas coordinates
         function vectorToCanvas(vec) {
             const center = getCenter();
+            const scale = getScale();
             return {
-                x: center.x + vec.x * SCALE,
-                y: center.y - vec.y * SCALE // Flip Y
+                x: center.x + vec.x * scale,
+                y: center.y - vec.y * scale // Flip Y
             };
         }
         
@@ -370,22 +376,23 @@
             ctx.arc(centerX, centerY, radius, startAngle, endAngle, clockwise);
             ctx.stroke();
             
-            // Draw arrowhead at end
+            // Draw arrowhead at end - corrected direction
             const arrowX = centerX + radius * Math.cos(endAngle);
             const arrowY = centerY + radius * Math.sin(endAngle);
-            const tangentAngle = endAngle + (clockwise ? -Math.PI/2 : Math.PI/2);
+            // Tangent points in direction of motion
+            const tangentAngle = endAngle + (clockwise ? Math.PI/2 : -Math.PI/2);
             
             const headSize = 12;
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.moveTo(arrowX, arrowY);
             ctx.lineTo(
-                arrowX + headSize * Math.cos(tangentAngle - Math.PI/6),
-                arrowY + headSize * Math.sin(tangentAngle - Math.PI/6)
+                arrowX - headSize * Math.cos(tangentAngle - Math.PI/6),
+                arrowY - headSize * Math.sin(tangentAngle - Math.PI/6)
             );
             ctx.lineTo(
-                arrowX + headSize * Math.cos(tangentAngle + Math.PI/6),
-                arrowY + headSize * Math.sin(tangentAngle + Math.PI/6)
+                arrowX - headSize * Math.cos(tangentAngle + Math.PI/6),
+                arrowY - headSize * Math.sin(tangentAngle + Math.PI/6)
             );
             ctx.closePath();
             ctx.fill();
@@ -404,7 +411,7 @@
             // Draw grid
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 1;
-            const gridSize = SCALE;
+            const gridSize = getScale();
             for (let x = 0; x < canvas.width; x += gridSize) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
@@ -466,12 +473,13 @@
             ctx.setLineDash([]);
             
             // Draw spinning orientation arrow
-            const paraCenterX = center.x + (u.x + v.x) * SCALE / 2;
-            const paraCenterY = center.y - (u.y + v.y) * SCALE / 2;
+            const scale = getScale();
+            const paraCenterX = center.x + (u.x + v.x) * scale / 2;
+            const paraCenterY = center.y - (u.y + v.y) * scale / 2;
             const arrowRadius = Math.min(
                 Math.sqrt(u.x*u.x + u.y*u.y),
                 Math.sqrt(v.x*v.x + v.y*v.y)
-            ) * SCALE * 0.35;
+            ) * scale * 0.35;
             
             drawSpinningArrow(paraCenterX, paraCenterY, arrowRadius, !isPositive, arrowColor);
             
