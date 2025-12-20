@@ -659,21 +659,21 @@
             };
         }
 
-        function drawSmoothArrow(centerX, centerY, radius, clockwise, color, opacity = 1.0) {
-            const startAngle = state2d.arrowRotation;
+        function drawSmoothArrow(centerX, centerY, radius, clockwise, color, opacity = 1.0, reverseRotation = false) {
+            const startAngle = reverseRotation ? -state2d.arrowRotation : state2d.arrowRotation;
             const arcLength = Math.PI * 1.5;
             const endAngle = startAngle + (clockwise ? -arcLength : arcLength);
 
             ctx.save();
             ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
-            ctx.globalAlpha = 0.12 * opacity;
+            ctx.lineWidth = 4;
+            ctx.globalAlpha = 0.1 * opacity;
             ctx.lineCap = 'round';
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, startAngle, endAngle, clockwise);
             ctx.stroke();
 
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 2;
             ctx.globalAlpha = opacity;
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, startAngle, endAngle, clockwise);
@@ -804,24 +804,7 @@
             drawVectorArrow(center.x, center.y, uCanvas.x, uCanvas.y, '#FF3B30', 3);
             drawVectorArrow(center.x, center.y, vCanvas.x, vCanvas.y, '#34C759', 3);
 
-            ctx.font = '600 16px -apple-system, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            // Position labels 15% beyond vector endpoints (no background)
-            const uLabelX = uCanvas.x + (uCanvas.x - center.x) * 0.15;
-            const uLabelY = uCanvas.y + (uCanvas.y - center.y) * 0.15;
-            const vLabelX = vCanvas.x + (vCanvas.x - center.x) * 0.15;
-            const vLabelY = vCanvas.y + (vCanvas.y - center.y) * 0.15;
-
-            ctx.fillStyle = '#FF3B30';
-            ctx.fillText('u', uLabelX, uLabelY);
-            ctx.fillStyle = '#34C759';
-            ctx.fillText('v', vLabelX, vLabelY);
-
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'alphabetic';
-
+            // Draw draggable endpoint circles
             ctx.fillStyle = 'white';
             ctx.strokeStyle = '#FF3B30';
             ctx.lineWidth = 2.5;
@@ -836,25 +819,70 @@
             ctx.fill();
             ctx.stroke();
 
+            // Vector labels - positioned 15% beyond endpoints
+            ctx.font = 'bold 20px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const uLabelX = uCanvas.x + (uCanvas.x - center.x) * 0.15;
+            const uLabelY = uCanvas.y + (uCanvas.y - center.y) * 0.15;
+            const vLabelX = vCanvas.x + (vCanvas.x - center.x) * 0.15;
+            const vLabelY = vCanvas.y + (vCanvas.y - center.y) * 0.15;
+
+            // Add subtle white outline for visibility
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.strokeText('u', uLabelX, uLabelY);
+            ctx.strokeText('v', vLabelX, vLabelY);
+
+            // Draw colored labels
+            ctx.fillStyle = '#FF3B30';
+            ctx.fillText('u', uLabelX, uLabelY);
+            ctx.fillStyle = '#34C759';
+            ctx.fillText('v', vLabelX, vLabelY);
+
             const scale = getScale();
             const paraCenterX = center.x + (u.x + v.x) * scale / 2;
             const paraCenterY = center.y - (u.y + v.y) * scale / 2;
             const baseArrowRadius = Math.min(
                 Math.sqrt(u.x*u.x + u.y*u.y),
                 Math.sqrt(v.x*v.x + v.y*v.y)
-            ) * scale * 0.28;
+            ) * scale * 0.3;
 
             // Draw dual arrows: inner (positive) and outer (negative)
             const positiveColor = isPositive ? '#0051D5' : '#E67700';  // Blue or Orange
             const negativeColor = isPositive ? '#FF3B30' : '#34C759';  // Red or Green
 
             // Inner arrow (positive bivector component u ∧ v)
-            const innerRadius = baseArrowRadius * 0.85;
-            drawSmoothArrow(paraCenterX, paraCenterY, innerRadius, !isPositive, positiveColor, 1.0);
+            const innerRadius = baseArrowRadius * 0.8;
+            drawSmoothArrow(paraCenterX, paraCenterY, innerRadius, !isPositive, positiveColor, 1.0, false);
 
-            // Outer arrow (negative bivector component -u ∧ v)
-            const outerRadius = baseArrowRadius * 1.15;
-            drawSmoothArrow(paraCenterX, paraCenterY, outerRadius, isPositive, negativeColor, 0.7);
+            // Outer arrow (negative bivector component -u ∧ v = v ∧ u)
+            // Rotates in opposite direction!
+            const outerRadius = baseArrowRadius * 1.2;
+            drawSmoothArrow(paraCenterX, paraCenterY, outerRadius, isPositive, negativeColor, 0.7, true);
+
+            // Draw bivector labels near the arrows
+            ctx.font = 'bold 14px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Position labels to the right of the parallelogram center
+            const labelOffsetX = baseArrowRadius * 1.5;
+            const labelY1 = paraCenterY - 20;
+            const labelY2 = paraCenterY + 20;
+
+            // Inner arrow label (positive component)
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.strokeText('u ∧ v', paraCenterX + labelOffsetX, labelY1);
+            ctx.fillStyle = positiveColor;
+            ctx.fillText('u ∧ v', paraCenterX + labelOffsetX, labelY1);
+
+            // Outer arrow label (negative component)
+            ctx.strokeText('v ∧ u', paraCenterX + labelOffsetX, labelY2);
+            ctx.fillStyle = negativeColor;
+            ctx.fillText('v ∧ u', paraCenterX + labelOffsetX, labelY2);
 
             document.getElementById('magnitude').textContent = wedge.magnitude.toFixed(2);
             document.getElementById('orientation').textContent = isPositive ? 'CCW (+)' : 'CW (−)';
