@@ -182,6 +182,67 @@
             color: #1d1d1f;
         }
 
+        .explanation-panel {
+            background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
+            border: 1px solid #d2d2d7;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            line-height: 1.6;
+        }
+
+        .explanation-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .explanation-panel p {
+            margin: 8px 0;
+            color: #1d1d1f;
+            font-size: 0.95rem;
+        }
+
+        .explanation-panel strong {
+            color: #007AFF;
+            font-weight: 600;
+        }
+
+        .explanation-panel ul {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .explanation-panel li {
+            margin: 6px 0;
+            color: #1d1d1f;
+            font-size: 0.9rem;
+        }
+
+        .explanation-panel .physics-examples {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            border-left: 3px solid #34C759;
+        }
+
+        .explanation-panel .physics-examples h4 {
+            margin: 0 0 8px 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #34C759;
+        }
+
+        .explanation-2d {
+            display: block;
+        }
+
+        .explanation-3d {
+            display: none;
+        }
+
         .instructions {
             background: #fff9e6;
             border: 1px solid #f0e5c5;
@@ -299,6 +360,52 @@
             <div class="instructions">
                 <strong id="instructionTitle">How to use (2D Mode)</strong>
                 <span id="instructionText">Drag the circular endpoints to adjust vectors u and v. The bivector and orientation arrow update in real-time.</span>
+            </div>
+
+            <!-- 2D Bivector Explanation -->
+            <div class="explanation-panel explanation-2d" id="explanation2d">
+                <h3>🔷 What is a Bivector?</h3>
+                <p>A <strong>bivector</strong> (u ∧ v) represents an <strong>oriented area element</strong> — a parallelogram with a direction.</p>
+                <p><strong>Key Properties:</strong></p>
+                <ul>
+                    <li><strong>Magnitude</strong> = Area of parallelogram = |u| |v| sin(θ)</li>
+                    <li><strong>Orientation</strong> = Direction of rotation from u to v (counterclockwise ↻ or clockwise ↺)</li>
+                    <li><strong>Antisymmetry</strong>: Reversing order flips sign: v ∧ u = −(u ∧ v)</li>
+                </ul>
+
+                <div class="physics-examples">
+                    <h4>⚡ Physical Phenomena</h4>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><strong>Angular Momentum:</strong> L = r ∧ p (position ∧ momentum)</li>
+                        <li><strong>Torque:</strong> τ = r ∧ F (lever arm ∧ force)</li>
+                        <li><strong>Magnetic Flux:</strong> Φ = B ∧ A (field ∧ area element)</li>
+                        <li><strong>Rotational Planes:</strong> Bivectors represent the plane of rotation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 3D Trivector Explanation -->
+            <div class="explanation-panel explanation-3d" id="explanation3d">
+                <h3>🔶 What is a Trivector?</h3>
+                <p>A <strong>trivector</strong> (u ∧ v ∧ w) represents an <strong>oriented volume element</strong> — a parallelepiped with a handedness.</p>
+                <p><strong>Key Properties:</strong></p>
+                <ul>
+                    <li><strong>Magnitude</strong> = Volume of parallelepiped = |u · (v × w)|</li>
+                    <li><strong>Orientation</strong> = Handedness (right-handed + or left-handed −)</li>
+                    <li><strong>Decomposition</strong>: Each face shows a bivector component (u∧v, u∧w, v∧w)</li>
+                    <li><strong>Dual arrows</strong>: Positive (inner, blue/orange) vs negative (outer, red/green)</li>
+                </ul>
+
+                <div class="physics-examples">
+                    <h4>⚡ Physical Phenomena</h4>
+                    <ul style="margin: 4px 0; padding-left: 20px;">
+                        <li><strong>Volume Flow:</strong> Fluid flux through 3D regions</li>
+                        <li><strong>Triple Products:</strong> Scalar triple product in mechanics</li>
+                        <li><strong>Determinants:</strong> Volume scaling in linear transformations</li>
+                        <li><strong>Spacetime Volumes:</strong> In relativity, 4D volume elements</li>
+                        <li><strong>Circulation:</strong> Each face shows circulation in that plane</li>
+                    </ul>
+                </div>
             </div>
 
             <div class="button-group" id="operationButtons">
@@ -767,13 +874,14 @@
         };
 
         // Helper function to create text sprite
-        function createTextSprite(text, color = '#ffffff', fontSize = 64) {
+        function createTextSprite(text, color = '#ffffff', fontSize = 64, backgroundOpacity = 0.4) {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             canvas.width = 512;
             canvas.height = 256;
 
-            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            // More transparent background
+            context.fillStyle = `rgba(0, 0, 0, ${backgroundOpacity})`;
             context.fillRect(0, 0, canvas.width, canvas.height);
 
             context.font = `bold ${fontSize}px Arial`;
@@ -786,10 +894,65 @@
             const spriteMaterial = new THREE.SpriteMaterial({
                 map: texture,
                 transparent: true,
-                depthTest: false
+                depthTest: false,
+                opacity: 0.9
             });
             const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.scale.set(2, 1, 1);  // Make larger
+            sprite.scale.set(1.2, 0.6, 1);  // Smaller than before
+
+            return sprite;
+        }
+
+        // Create color-coded bivector label showing both positive and negative
+        function createBivectorLabelSprite(bivectorName, positiveColor, negativeColor, fontSize = 48) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 1024;
+            canvas.height = 256;
+
+            // Transparent background
+            context.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            context.font = `bold ${fontSize}px Arial`;
+            context.textBaseline = 'middle';
+
+            // Measure text to center it
+            const posText = bivectorName;
+            const separator = ' / ';
+            const negText = `−${bivectorName}`;
+
+            context.fillStyle = positiveColor;
+            const posWidth = context.measureText(posText).width;
+            const sepWidth = context.measureText(separator).width;
+            context.fillStyle = negativeColor;
+            const negWidth = context.measureText(negText).width;
+
+            const totalWidth = posWidth + sepWidth + negWidth;
+            const startX = (canvas.width - totalWidth) / 2;
+
+            // Draw positive component in its color
+            context.fillStyle = positiveColor;
+            context.textAlign = 'left';
+            context.fillText(posText, startX, canvas.height / 2);
+
+            // Draw separator in white
+            context.fillStyle = '#ffffff';
+            context.fillText(separator, startX + posWidth, canvas.height / 2);
+
+            // Draw negative component in its color
+            context.fillStyle = negativeColor;
+            context.fillText(negText, startX + posWidth + sepWidth, canvas.height / 2);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                opacity: 0.9
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(2, 0.5, 1);
 
             return sprite;
         }
@@ -882,17 +1045,17 @@
             scene.add(vectors3d.v);
             scene.add(vectors3d.w);
 
-            // Add vector labels
-            vectorLabels.u = createTextSprite('u', '#FF3B30', 96);
-            vectorLabels.u.position.copy(state3d.u.clone().multiplyScalar(0.5));
+            // Add vector labels - no background, positioned beyond endpoints
+            vectorLabels.u = createTextSprite('u', '#FF3B30', 72, 0);  // 0 = no background
+            vectorLabels.u.position.copy(state3d.u.clone().multiplyScalar(1.15));  // 15% beyond tip
             scene.add(vectorLabels.u);
 
-            vectorLabels.v = createTextSprite('v', '#34C759', 96);
-            vectorLabels.v.position.copy(state3d.v.clone().multiplyScalar(0.5));
+            vectorLabels.v = createTextSprite('v', '#34C759', 72, 0);  // 0 = no background
+            vectorLabels.v.position.copy(state3d.v.clone().multiplyScalar(1.15));  // 15% beyond tip
             scene.add(vectorLabels.v);
 
-            vectorLabels.w = createTextSprite('w', '#007AFF', 96);
-            vectorLabels.w.position.copy(state3d.w.clone().multiplyScalar(0.5));
+            vectorLabels.w = createTextSprite('w', '#007AFF', 72, 0);  // 0 = no background
+            vectorLabels.w.position.copy(state3d.w.clone().multiplyScalar(1.15));  // 15% beyond tip
             scene.add(vectorLabels.w);
 
             // Create draggable spheres at endpoints
@@ -973,7 +1136,7 @@
             const material = new THREE.MeshPhongMaterial({
                 color: isPositive ? 0x7B9FD4 : 0xD47B7B,
                 transparent: true,
-                opacity: 0.4,
+                opacity: 0.25,  // More transparent
                 side: THREE.DoubleSide
             });
 
@@ -991,7 +1154,7 @@
             parallelepiped.add(line);
 
             // Create spinning arrows on ALL 6 faces with arrowheads
-            const color = isPositive ? 0x0051D5 : 0xE67700;
+            // Colors now determined per-face based on bivector sign
 
             // Define all 6 faces with their corner points and edges
             const faces = [
@@ -1000,42 +1163,42 @@
                     corners: [origin, p1, p4, p2],
                     edge1: vec1,
                     edge2: vec2,
-                    bivectorLabel: 'u ∧ v'
+                    bivectorName: 'u ∧ v'
                 },
                 {
                     name: 'top',
                     corners: [p3, p5, p7, p6],
                     edge1: vec1,
                     edge2: vec2,
-                    bivectorLabel: 'u ∧ v'
+                    bivectorName: 'u ∧ v'
                 },
                 {
                     name: 'front',
                     corners: [origin, p1, p5, p3],
                     edge1: vec1,
                     edge2: vec3,
-                    bivectorLabel: 'u ∧ w'
+                    bivectorName: 'u ∧ w'
                 },
                 {
                     name: 'back',
                     corners: [p2, p4, p7, p6],
                     edge1: vec1,
                     edge2: vec3,
-                    bivectorLabel: 'u ∧ w'
+                    bivectorName: 'u ∧ w'
                 },
                 {
                     name: 'left',
                     corners: [origin, p2, p6, p3],
                     edge1: vec2,
                     edge2: vec3,
-                    bivectorLabel: 'v ∧ w'
+                    bivectorName: 'v ∧ w'
                 },
                 {
                     name: 'right',
                     corners: [p1, p4, p7, p5],
                     edge1: vec2,
                     edge2: vec3,
-                    bivectorLabel: 'v ∧ w'
+                    bivectorName: 'v ∧ w'
                 }
             ];
 
@@ -1046,92 +1209,115 @@
                 center.divideScalar(4);
 
                 // Calculate face normal (perpendicular to face)
-                // Use right-hand rule: edge1 × edge2
                 const normal = new THREE.Vector3().crossVectors(face.edge1, face.edge2).normalize();
 
-                // Determine circulation direction based on trivector orientation
-                // For u ∧ v ∧ w:
-                // - Positive (right-handed): circulation from edge1 toward edge2 (CCW viewed from normal)
-                // - Negative (left-handed): circulation from edge2 toward edge1 (CW viewed from normal)
-                const circulationDirection = isPositive ? 1 : -1;
+                // Create BOTH positive and negative arrows on each face
+                // bivectorSign: +1 for positive, -1 for negative
+                [1, -1].forEach((bivectorSign, index) => {
+                    // Determine circulation direction
+                    const circulationDirection = (isPositive ? 1 : -1) * bivectorSign;
 
-                // Create arrow group (torus + cone)
-                const arrowGroup = new THREE.Group();
+                    // Choose arrow color based on bivector sign
+                    let arrowColor, arrowOpacity;
+                    if (bivectorSign > 0) {
+                        // Positive component - solid
+                        arrowColor = isPositive ? 0x0051D5 : 0xE67700;  // Blue or Orange
+                        arrowOpacity = 1.0;
+                    } else {
+                        // Negative component - semi-transparent
+                        arrowColor = isPositive ? 0xFF3B30 : 0x34C759;  // Red or Green
+                        arrowOpacity = 0.7;
+                    }
 
-                // Determine radius based on face size
-                const radius = Math.min(face.edge1.length(), face.edge2.length()) * 0.25;
-                const tube = 0.05;
+                    // Create arrow group
+                    const arrowGroup = new THREE.Group();
 
-                // Create partial torus (270 degrees = 1.5*PI radians)
-                // Default torus goes counterclockwise from angle 0
-                const arcLength = Math.PI * 1.5;
-                const torusGeometry = new THREE.TorusGeometry(radius, tube, 8, 32, arcLength);
-                const torusMaterial = new THREE.MeshPhongMaterial({ color });
-                const torus = new THREE.Mesh(torusGeometry, torusMaterial);
+                    // Smaller radius to fit two arrows
+                    const baseRadius = Math.min(face.edge1.length(), face.edge2.length()) * 0.2;
 
-                // For negative orientation (left-handed), flip the torus to reverse circulation
-                if (circulationDirection < 0) {
-                    torus.rotation.x = Math.PI; // Flip 180° around X-axis to reverse circulation
-                }
+                    // Offset: inner (positive) vs outer (negative)
+                    const radiusOffset = bivectorSign > 0 ? -0.15 : 0.15;
+                    const radius = baseRadius + radiusOffset;
+                    const tube = 0.035;  // Thinner tubes
 
-                arrowGroup.add(torus);
+                    // Create partial torus
+                    const arcLength = Math.PI * 1.5;
+                    const torusGeometry = new THREE.TorusGeometry(radius, tube, 8, 32, arcLength);
+                    const torusMaterial = new THREE.MeshPhongMaterial({
+                        color: arrowColor,
+                        transparent: true,
+                        opacity: arrowOpacity,
+                        depthTest: false  // Always visible through cube
+                    });
+                    const torus = new THREE.Mesh(torusGeometry, torusMaterial);
 
-                // Create arrowhead (cone) at the end of the arc
-                // Position depends on circulation direction
-                const endAngle = circulationDirection > 0 ? arcLength : 0; // CCW ends at 270°, CW starts at 0°
+                    // Flip if circulation is negative
+                    if (circulationDirection < 0) {
+                        torus.rotation.x = Math.PI;
+                    }
 
-                // Position on the circle at end angle
-                const arrowheadX = radius * Math.cos(endAngle);
-                const arrowheadY = radius * Math.sin(endAngle);
+                    arrowGroup.add(torus);
 
-                // Tangent direction (perpendicular to radius, in direction of circulation)
-                const tangentAngle = endAngle + (circulationDirection * Math.PI / 2);
+                    // Create arrowhead
+                    const endAngle = circulationDirection > 0 ? arcLength : 0;
+                    const arrowheadX = radius * Math.cos(endAngle);
+                    const arrowheadY = radius * Math.sin(endAngle);
+                    const tangentAngle = endAngle + (circulationDirection * Math.PI / 2);
 
-                const coneHeight = 0.18;
-                const coneRadius = 0.1;
-                const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
-                const coneMaterial = new THREE.MeshPhongMaterial({ color });
-                const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+                    const coneHeight = 0.15;
+                    const coneRadius = 0.08;
+                    const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 8);
+                    const coneMaterial = new THREE.MeshPhongMaterial({
+                        color: arrowColor,
+                        transparent: true,
+                        opacity: arrowOpacity,
+                        depthTest: false  // Always visible through cube
+                    });
+                    const cone = new THREE.Mesh(coneGeometry, coneMaterial);
 
-                // Position cone at end of arc
-                cone.position.x = arrowheadX;
-                cone.position.y = arrowheadY;
-                cone.position.z = 0;
+                    cone.position.x = arrowheadX;
+                    cone.position.y = arrowheadY;
+                    cone.position.z = 0;
+                    cone.rotation.z = tangentAngle - Math.PI / 2;
 
-                // Rotate cone to point in tangent direction
-                // Cone default points up (+Y), adjust for tangent direction
-                cone.rotation.z = tangentAngle - Math.PI / 2;
+                    arrowGroup.add(cone);
 
-                arrowGroup.add(cone);
+                    // Position at face center
+                    arrowGroup.position.copy(center);
 
-                // Position the entire arrow group at face center
-                arrowGroup.position.copy(center);
+                    // Orient to face plane
+                    const defaultNormal = new THREE.Vector3(0, 0, 1);
+                    const quaternion = new THREE.Quaternion().setFromUnitVectors(defaultNormal, normal);
+                    arrowGroup.quaternion.copy(quaternion);
 
-                // Orient the arrow group so it lies in the face plane
-                // Default: arrow in XY plane (normal = +Z)
-                // Target: arrow in face plane (normal = face normal)
-                const defaultNormal = new THREE.Vector3(0, 0, 1);
-                const quaternion = new THREE.Quaternion().setFromUnitVectors(defaultNormal, normal);
-                arrowGroup.quaternion.copy(quaternion);
+                    // Store data for animation
+                    arrowGroup.userData = {
+                        isArrow: true,
+                        isPositive,
+                        faceName: face.name,
+                        normal: normal.clone(),
+                        baseQuaternion: quaternion.clone(),
+                        rotationAxis: normal.clone(),
+                        circulationDirection: circulationDirection,
+                        bivectorSign: bivectorSign
+                    };
 
-                // Store data for animation
-                arrowGroup.userData = {
-                    isArrow: true,
-                    isPositive,
-                    faceName: face.name,
-                    normal: normal.clone(),
-                    baseQuaternion: quaternion.clone(),
-                    rotationAxis: normal.clone(),
-                    circulationDirection: circulationDirection
-                };
+                    scene.add(arrowGroup);
+                    spinningArrows.push(arrowGroup);
+                });
 
-                scene.add(arrowGroup);
-                spinningArrows.push(arrowGroup);
+                // Add color-coded label showing both bivector names
+                // Determine colors based on first arrow created (bivectorSign = 1)
+                const positiveColor = isPositive ? '#0051D5' : '#E67700';  // Blue or Orange
+                const negativeColor = isPositive ? '#FF3B30' : '#34C759';  // Red or Green
 
-                // Add bivector label for this face
-                const faceLabel = createTextSprite(face.bivectorLabel, '#ffffff', 80);
-                // Position label slightly offset from face center along normal
-                const labelOffset = normal.clone().multiplyScalar(0.5);
+                const faceLabel = createBivectorLabelSprite(
+                    face.bivectorName,
+                    positiveColor,
+                    negativeColor,
+                    48
+                );
+                const labelOffset = normal.clone().multiplyScalar(0.35);
                 faceLabel.position.copy(center.clone().add(labelOffset));
                 scene.add(faceLabel);
                 faceLabels.push(faceLabel);
@@ -1371,6 +1557,8 @@
                     document.getElementById('instructionText').textContent = 'Drag the circular endpoints to adjust vectors u and v. The bivector and orientation arrow update in real-time.';
                     document.getElementById('magnitudeLabel').textContent = 'Area';
                     document.getElementById('operationButtons').style.display = 'grid';
+                    document.getElementById('explanation2d').style.display = 'block';
+                    document.getElementById('explanation3d').style.display = 'none';
                     resizeCanvas();
                     draw2d();
                 } else {
@@ -1381,6 +1569,8 @@
                     document.getElementById('instructionText').textContent = 'Drag colored spheres to adjust vectors. Right-click and drag (or two-finger drag on mobile) to rotate camera. Scroll to zoom.';
                     document.getElementById('magnitudeLabel').textContent = 'Volume';
                     document.getElementById('operationButtons').style.display = 'none';
+                    document.getElementById('explanation2d').style.display = 'none';
+                    document.getElementById('explanation3d').style.display = 'block';
 
                     // Initialize 3D if not already done
                     if (!scene) {
