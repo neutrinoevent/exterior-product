@@ -79,6 +79,30 @@
             color: #1d1d1f;
         }
 
+        .learn-more-btn {
+            display: block;
+            margin: 12px auto 0 auto;
+            padding: 10px 28px;
+            border: 1.5px solid rgba(52, 199, 89, 0.5);
+            background: rgba(52, 199, 89, 0.15);
+            color: #ffffff;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            max-width: fit-content;
+        }
+
+        .learn-more-btn:hover {
+            background: rgba(52, 199, 89, 0.9);
+            border-color: #34C759;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(52, 199, 89, 0.4);
+        }
+
         .viz-container {
             position: relative;
             width: 100%;
@@ -243,6 +267,27 @@
             display: none;
         }
 
+        .control-hints {
+            background: #e8f4fd;
+            border: 1px solid #b3d9f2;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 12px 0;
+            font-size: 0.85rem;
+            color: #1d1d1f;
+            line-height: 1.4;
+        }
+
+        .control-hints strong {
+            color: #007AFF;
+            font-weight: 600;
+        }
+
+        .control-hints .separator {
+            margin: 0 8px;
+            color: #86868b;
+        }
+
         .instructions {
             background: #fff9e6;
             border: 1px solid #f0e5c5;
@@ -349,11 +394,25 @@
                 <button class="dimension-btn active" data-mode="2d">2D Bivector</button>
                 <button class="dimension-btn" data-mode="3d">3D Trivector</button>
             </div>
+            <button class="learn-more-btn" id="learnMoreBtn">📚 Learn More</button>
         </div>
 
         <div class="viz-container">
             <canvas id="canvas2d" width="800" height="500"></canvas>
             <div id="container3d"></div>
+        </div>
+
+        <!-- Control Hints -->
+        <div class="control-hints" id="controlHints2d" style="margin: 16px 24px 0 24px;">
+            <strong>💻 Desktop:</strong> Drag circular endpoints to adjust vectors
+            <span class="separator">•</span>
+            <strong>📱 Mobile:</strong> Touch and drag endpoints
+        </div>
+
+        <div class="control-hints" id="controlHints3d" style="margin: 16px 24px 0 24px; display: none;">
+            <strong>💻 Desktop:</strong> Drag colored spheres to move vectors • Right-click drag to rotate • Scroll to zoom
+            <span class="separator">•</span>
+            <strong>📱 Mobile:</strong> Drag spheres to move vectors • Swipe anywhere to rotate view
         </div>
 
         <div class="controls">
@@ -371,6 +430,7 @@
                     <li><strong>Magnitude</strong> = Area of parallelogram = |u| |v| sin(θ)</li>
                     <li><strong>Orientation</strong> = Direction of rotation from u to v (counterclockwise ↻ or clockwise ↺)</li>
                     <li><strong>Antisymmetry</strong>: Reversing order flips sign: v ∧ u = −(u ∧ v)</li>
+                    <li><strong>Dual arrows</strong>: Inner (positive, blue/orange) vs outer (negative, red/green) show both orientations</li>
                 </ul>
 
                 <div class="physics-examples">
@@ -436,7 +496,7 @@
     </div>
 
     <div class="container">
-        <div class="education">
+        <div class="education" id="educationSection">
             <h2>Understanding Exterior Products</h2>
 
             <div class="concept">
@@ -599,7 +659,7 @@
             };
         }
 
-        function drawSmoothArrow(centerX, centerY, radius, clockwise, color) {
+        function drawSmoothArrow(centerX, centerY, radius, clockwise, color, opacity = 1.0) {
             const startAngle = state2d.arrowRotation;
             const arcLength = Math.PI * 1.5;
             const endAngle = startAngle + (clockwise ? -arcLength : arcLength);
@@ -607,14 +667,14 @@
             ctx.save();
             ctx.strokeStyle = color;
             ctx.lineWidth = 5;
-            ctx.globalAlpha = 0.12;
+            ctx.globalAlpha = 0.12 * opacity;
             ctx.lineCap = 'round';
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, startAngle, endAngle, clockwise);
             ctx.stroke();
 
             ctx.lineWidth = 2.5;
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = opacity;
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, startAngle, endAngle, clockwise);
             ctx.stroke();
@@ -627,7 +687,7 @@
             const headWidth = 7;
 
             ctx.fillStyle = color;
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = opacity;
             ctx.beginPath();
             ctx.moveTo(arrowX, arrowY);
             ctx.lineTo(
@@ -748,21 +808,11 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            const uAngle = Math.atan2(u.y, u.x);
-            const vAngle = Math.atan2(v.y, v.x);
-            const labelDist = 22;
-            const uLabelX = uCanvas.x + labelDist * Math.cos(uAngle + Math.PI/2);
-            const uLabelY = uCanvas.y - labelDist * Math.sin(uAngle + Math.PI/2);
-            const vLabelX = vCanvas.x + labelDist * Math.cos(vAngle + Math.PI/2);
-            const vLabelY = vCanvas.y - labelDist * Math.sin(vAngle + Math.PI/2);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.beginPath();
-            ctx.arc(uLabelX, uLabelY, 11, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(vLabelX, vLabelY, 11, 0, Math.PI * 2);
-            ctx.fill();
+            // Position labels 15% beyond vector endpoints (no background)
+            const uLabelX = uCanvas.x + (uCanvas.x - center.x) * 0.15;
+            const uLabelY = uCanvas.y + (uCanvas.y - center.y) * 0.15;
+            const vLabelX = vCanvas.x + (vCanvas.x - center.x) * 0.15;
+            const vLabelY = vCanvas.y + (vCanvas.y - center.y) * 0.15;
 
             ctx.fillStyle = '#FF3B30';
             ctx.fillText('u', uLabelX, uLabelY);
@@ -789,12 +839,22 @@
             const scale = getScale();
             const paraCenterX = center.x + (u.x + v.x) * scale / 2;
             const paraCenterY = center.y - (u.y + v.y) * scale / 2;
-            const arrowRadius = Math.min(
+            const baseArrowRadius = Math.min(
                 Math.sqrt(u.x*u.x + u.y*u.y),
                 Math.sqrt(v.x*v.x + v.y*v.y)
             ) * scale * 0.28;
 
-            drawSmoothArrow(paraCenterX, paraCenterY, arrowRadius, !isPositive, arrowColor);
+            // Draw dual arrows: inner (positive) and outer (negative)
+            const positiveColor = isPositive ? '#0051D5' : '#E67700';  // Blue or Orange
+            const negativeColor = isPositive ? '#FF3B30' : '#34C759';  // Red or Green
+
+            // Inner arrow (positive bivector component u ∧ v)
+            const innerRadius = baseArrowRadius * 0.85;
+            drawSmoothArrow(paraCenterX, paraCenterY, innerRadius, !isPositive, positiveColor, 1.0);
+
+            // Outer arrow (negative bivector component -u ∧ v)
+            const outerRadius = baseArrowRadius * 1.15;
+            drawSmoothArrow(paraCenterX, paraCenterY, outerRadius, isPositive, negativeColor, 0.7);
 
             document.getElementById('magnitude').textContent = wedge.magnitude.toFixed(2);
             document.getElementById('orientation').textContent = isPositive ? 'CCW (+)' : 'CW (−)';
@@ -1504,24 +1564,32 @@
         function on3DTouchStart(event) {
             if (event.touches.length === 1) {
                 const touch = event.touches[0];
-                on3DMouseDown({
-                    button: 0,
-                    clientX: touch.clientX,
-                    clientY: touch.clientY
-                });
-            } else if (event.touches.length === 2) {
-                isRotating3d = true;
-                const touch = event.touches[0];
-                previousMouse = { x: touch.clientX, y: touch.clientY };
+
+                // Check if touching a sphere
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse3d.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse3d.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse3d, camera);
+
+                const intersects = raycaster.intersectObjects([
+                    spheres3d.u, spheres3d.v, spheres3d.w
+                ]);
+
+                if (intersects.length > 0) {
+                    // Touching a sphere - drag vector
+                    const sphere = intersects[0].object;
+                    dragging3d = sphere.userData.vector;
+                } else {
+                    // Not touching a sphere - rotate camera
+                    isRotating3d = true;
+                    previousMouse = { x: touch.clientX, y: touch.clientY };
+                }
             }
         }
 
         function on3DTouchMove(event) {
             event.preventDefault();
             if (event.touches.length === 1) {
-                const touch = event.touches[0];
-                on3DMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
-            } else if (event.touches.length === 2 && isRotating3d) {
                 const touch = event.touches[0];
                 on3DMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
             }
@@ -1553,6 +1621,8 @@
                     currentMode = '2d';
                     canvas2d.style.display = 'block';
                     container3d.style.display = 'none';
+                    document.getElementById('controlHints2d').style.display = 'block';
+                    document.getElementById('controlHints3d').style.display = 'none';
                     document.getElementById('instructionTitle').textContent = 'How to use (2D Mode)';
                     document.getElementById('instructionText').textContent = 'Drag the circular endpoints to adjust vectors u and v. The bivector and orientation arrow update in real-time.';
                     document.getElementById('magnitudeLabel').textContent = 'Area';
@@ -1565,8 +1635,10 @@
                     currentMode = '3d';
                     canvas2d.style.display = 'none';
                     container3d.style.display = 'block';
+                    document.getElementById('controlHints2d').style.display = 'none';
+                    document.getElementById('controlHints3d').style.display = 'block';
                     document.getElementById('instructionTitle').textContent = 'How to use (3D Mode)';
-                    document.getElementById('instructionText').textContent = 'Drag colored spheres to adjust vectors. Right-click and drag (or two-finger drag on mobile) to rotate camera. Scroll to zoom.';
+                    document.getElementById('instructionText').textContent = 'Drag colored spheres to adjust vectors. Right-click and drag to rotate camera. Scroll to zoom.';
                     document.getElementById('magnitudeLabel').textContent = 'Volume';
                     document.getElementById('operationButtons').style.display = 'none';
                     document.getElementById('explanation2d').style.display = 'none';
@@ -1605,6 +1677,15 @@
         });
 
         window.addEventListener('resize', onWindowResize);
+
+        // Learn More button scroll handler
+        document.getElementById('learnMoreBtn').addEventListener('click', () => {
+            const educationSection = document.getElementById('educationSection');
+            educationSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        });
     </script>
 </body>
 </html>
